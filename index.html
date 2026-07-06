@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🧑‍🌾 牧場物語 Farm Story Demo</title>
+  <meta name="description" content="A Harvest Moon style 2D pixel-art farming web game built with Phaser 3." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+TC:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0d1117;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
+      overflow: hidden;
+    }
+
+    #game-container {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 20px rgba(76,175,80,0.15);
+    }
+
+    #game-container canvas {
+      display: block;
+    }
+
+    /* Controls hint - shown bottom-right over Phaser canvas */
+    #controls-hint {
+      position: absolute;
+      bottom: 100px;
+      right: 14px;
+      background: rgba(15,10,5,0.75);
+      border: 1px solid rgba(141,110,99,0.5);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #ffe0b2;
+      pointer-events: none;
+      line-height: 1.8;
+      backdrop-filter: blur(4px);
+    }
+    #controls-hint b { color: #ffd700; }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="controls-hint">
+      <b>WASD</b> / 方向鍵 移動<br>
+      <b>SPACE / E</b> 使用工具<br>
+      <b>1-4</b> 切換工具<br>
+      <b>點擊道具欄</b> 選工具
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
