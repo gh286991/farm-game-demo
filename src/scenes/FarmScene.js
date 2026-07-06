@@ -36,10 +36,10 @@ const OBJECTS = [
   { key: 'obj_apple_tree',   col: 1,  row: 5,  tileW: 2.5, tileH: 3,   depth: 5  },
   { key: 'obj_apple_tree',   col: 1,  row: 9,  tileW: 2.5, tileH: 3,   depth: 5  },
   { key: 'obj_apple_tree',   col: 1,  row: 13, tileW: 2.5, tileH: 3,   depth: 5  },
-  { key: 'obj_wooden_fence', col: 4,  row: 3,  tileW: 3,   tileH: 1.2, depth: 4  },
-  { key: 'obj_wooden_fence', col: 8,  row: 3,  tileW: 3,   tileH: 1.2, depth: 4  },
-  { key: 'obj_wooden_fence', col: 12, row: 3,  tileW: 3,   tileH: 1.2, depth: 4  },
-  { key: 'obj_wooden_fence', col: 16, row: 3,  tileW: 3,   tileH: 1.2, depth: 4  },
+  { key: 'obj_wooden_fence', col: 4,  row: 3,  tileW: 3,   tileH: 1.0, depth: 4  },
+  { key: 'obj_wooden_fence', col: 8,  row: 3,  tileW: 3,   tileH: 1.0, depth: 4  },
+  { key: 'obj_wooden_fence', col: 12, row: 3,  tileW: 3,   tileH: 1.0, depth: 4  },
+  { key: 'obj_wooden_fence', col: 16, row: 3,  tileW: 3,   tileH: 1.0, depth: 4  },
   { key: 'obj_shipping_bin', col: 20, row: 9,  tileW: 2,   tileH: 2,   depth: 8  },
   { key: 'obj_water_well',   col: 21, row: 7,  tileW: 2,   tileH: 2.5, depth: 8  },
   { key: 'obj_scarecrow',    col: 8,  row: 7,  tileW: 1.5, tileH: 2.5, depth: 6  },
@@ -68,16 +68,31 @@ export class FarmScene extends Phaser.Scene {
     this.load.image('obj_scarecrow',    '/assets/obj_scarecrow.jpg');
     this.load.image('obj_flowers',      '/assets/obj_flowers.jpg');
 
-    // Gemini-generated farmer spritesheet
-    this.load.image('farmer_sheet_raw', '/assets/farmer_spritesheet.jpg');
+    // 載入去背與去邊框完成的 PNG spritesheet
+    this.load.spritesheet('farmer_sprite', '/assets/farmer_spritesheet.png', {
+      frameWidth: 256,
+      frameHeight: 256
+    });
+    this.load.spritesheet('farmer_hoe_action', '/assets/agy-character-actions/farmer_hoe_spritesheet.png', {
+      frameWidth: 256,
+      frameHeight: 256
+    });
+
+    // 載入四種主要作物的生長階段圖 (每個 frame 256x256)
+    this.load.spritesheet('crop_turnip', '/assets/crops/turnip_growth.png', { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('crop_strawberry', '/assets/crops/strawberry_growth.png', { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('crop_tomato', '/assets/crops/tomato_growth.png', { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('crop_corn', '/assets/crops/corn_growth.png', { frameWidth: 256, frameHeight: 256 });
   }
 
   create() {
     const totalW = MAP_COLS * TILE_SIZE;
     const totalH = MAP_ROWS * TILE_SIZE;
 
-    // ── 1. Spritesheet ─────────────────────────────────────
-    this._buildFarmerSpritesheet();
+    // ── 1. Action Sprite ─────────────────────────────────────
+    this.actionSprite = this.add.sprite(0, 0, 'farmer_hoe_action', 0);
+    this.actionSprite.setScale(0.28).setDepth(51).setVisible(false);
+    this.isActing = false;
 
     // ── 2. Tilemap ──────────────────────────────────────────
     this.tileRefs = {};
@@ -149,28 +164,26 @@ export class FarmScene extends Phaser.Scene {
     this.cropSprites = {};
   }
 
-  // ─── Build farmer spritesheet ──────────────────────────────
-  _buildFarmerSpritesheet() {
-    const src = this.textures.get('farmer_sheet_raw').getSourceImage();
-    const fw = Math.floor(src.width  / 4);
-    const fh = Math.floor(src.height / 4);
+  _playActionAnimation(action) {
+    if (!this.actionSprite || this.isActing) return;
 
-    const canvas = document.createElement('canvas');
-    canvas.width  = src.width;
-    canvas.height = src.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(src, 0, 0);
+    const animKey = `action_${action}_${this.facing}`;
+    if (!this.anims.exists(animKey)) return;
 
-    const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const d = id.data;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i] > 230 && d[i+1] > 230 && d[i+2] > 230) d[i+3] = 0;
-    }
-    ctx.putImageData(id, 0, 0);
-
-    this.textures.addSpriteSheet('farmer_sprite', canvas, {
-      frameWidth:  fw,
-      frameHeight: fh
+    this.isActing = true;
+    this.player.body.setVelocity(0);
+    this.actionSprite
+      .setTexture(`farmer_${action}_action`)
+      .setPosition(this.player.x, this.player.y)
+      .setDepth(this.player.depth + 1)
+      .setVisible(true);
+    this.player.setVisible(false);
+    this.actionSprite.play(animKey);
+    this.actionSprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      this.actionSprite.setVisible(false);
+      this.player.setVisible(true);
+      this.isActing = false;
+      this.player.play(`idle_${this.facing}`, true);
     });
   }
 
@@ -195,6 +208,16 @@ export class FarmScene extends Phaser.Scene {
           key: `idle_${key}`,
           frames: this.anims.generateFrameNumbers('farmer_sprite', { start: row*4, end: row*4 }),
           frameRate: 1, repeat: -1
+        });
+      }
+
+      const actionKey = `action_hoe_${key}`;
+      if (!this.anims.exists(actionKey)) {
+        this.anims.create({
+          key: actionKey,
+          frames: this.anims.generateFrameNumbers('farmer_hoe_action', { start: row * 4, end: row * 4 + 3 }),
+          frameRate: 5,
+          repeat: 0
         });
       }
     });
@@ -284,8 +307,10 @@ export class FarmScene extends Phaser.Scene {
     const dx = { down: 0, up: 0, left: -1, right: 1 };
     const dy = { down: 1, up: -1, left: 0, right: 0 };
 
-    const pCol = Math.floor(this.player.x / TILE_SIZE);
-    const pRow = Math.floor((this.player.y + 8) / TILE_SIZE);
+    const bodyCenterX = this.player.body ? (this.player.body.x + this.player.body.width / 2) : this.player.x;
+    const bodyCenterY = this.player.body ? (this.player.body.y + this.player.body.height / 2) : this.player.y;
+    const pCol = Math.floor(bodyCenterX / TILE_SIZE);
+    const pRow = Math.floor(bodyCenterY / TILE_SIZE);
 
     const frontCol = pCol + (dx[this.facing] || 0);
     const frontRow = pRow + (dy[this.facing] || 0);
@@ -349,6 +374,7 @@ export class FarmScene extends Phaser.Scene {
       if (tool === 'hoe') {
         if (!tile.tilled) {
           tile.tilled = true;
+          this._playActionAnimation('hoe');
           this._swapTile(col, row, 'tile_soil_dry');
           this._fx(col, row, '⛏️ 翻土！', '#d4a373');
           this._drainStamina(8);
@@ -445,14 +471,31 @@ export class FarmScene extends Phaser.Scene {
 
   _drawCrop(col, row, stage) {
     this._removeCrop(col, row);
-    const icons = ['🌱','🌿','🌾','🌻'];
-    const sizes = [28, 34, 40, 46];
+    const key = `${col},${row}`;
+    const tile = this.soilTiles[key];
+    const cropType = tile?.crop?.type || 'turnip';
+
     const x = col * TILE_SIZE + TILE_SIZE / 2;
     const y = row * TILE_SIZE + TILE_SIZE / 2;
-    const t = this.add.text(x, y, icons[Math.min(stage, icons.length-1)], {
-      fontSize: `${sizes[Math.min(stage, sizes.length-1)]}px`
-    }).setOrigin(0.5).setDepth(20);
-    this.cropSprites[`${col},${row}`] = t;
+
+    const textureKey = `crop_${cropType}`;
+    // 如果這個作物的生長貼圖存在，則使用圖片繪製
+    if (this.textures.exists(textureKey)) {
+      const img = this.add.image(x, y - 8, textureKey, Math.min(stage, 3))
+        .setDisplaySize(54, 54)
+        .setOrigin(0.5, 0.5)
+        .setDepth(20);
+      this.cropSprites[key] = img;
+    } else {
+      // Fallback 使用原有的 Emoji
+      const icons = ['🌱', '🌿', '🌾', '🌻'];
+      const sizes = [28, 34, 40, 46];
+      const idx = Math.min(stage, icons.length - 1);
+      const t = this.add.text(x, y, icons[idx], {
+        fontSize: `${sizes[idx]}px`
+      }).setOrigin(0.5).setDepth(20);
+      this.cropSprites[key] = t;
+    }
   }
 
   _removeCrop(col, row) {
