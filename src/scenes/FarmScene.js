@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { audioService } from '../services/AudioService.js';
 
 // ─────────────────────────────────────────────
-//  MAP LAYOUT  (0=grass, 1=soil_dry, 3=path)
+//  MAP LAYOUT  (0=grass, 3=dirt path)
+//  All grass tiles inside the farm are tillable!
 // ─────────────────────────────────────────────
 const TILE_SIZE = 64;
 const MAP_COLS  = 25;
@@ -13,17 +14,17 @@ const BASE_MAP = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
-  [0,0,0,0,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,3,0,0,0,0,0],
-  [0,0,0,0,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,3,0,0,0,0,0],
-  [0,0,0,0,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,3,0,0,0,0,0],
-  [0,0,0,0,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,3,0,0,0,0,0],
-  [0,0,0,0,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,3,0,0,0,0,0],
+  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,3,0,0,0,0,0],
+  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,3,0,0,0,0,0],
+  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,3,0,0,0,0,0],
+  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,3,0,0,0,0,0],
+  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,3,0,0,0,0,0],
   [0,0,0,0,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
-  [0,0,0,0,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,3,0,0,0,0,0],
-  [0,0,0,0,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,3,0,0,0,0,0],
-  [0,0,0,0,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,3,0,0,0,0,0],
-  [0,0,0,0,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,3,0,0,0,0,0],
-  [0,0,0,0,3,1,1,1,1,1,1,3,1,1,1,1,1,1,3,3,0,0,0,0,0],
+  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,3,0,0,0,0,0],
+  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,3,0,0,0,0,0],
+  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,3,0,0,0,0,0],
+  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,3,0,0,0,0,0],
+  [0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,0,3,3,0,0,0,0,0],
   [0,0,0,0,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -46,18 +47,6 @@ const OBJECTS = [
   { key: 'obj_flowers',      col: 21, row: 14, tileW: 2,   tileH: 2,   depth: 5  },
 ];
 
-const SOIL_GRID_AREAS = [
-  { startCol: 5, endCol: 10, startRow: 4,  endRow: 8  },
-  { startCol: 12, endCol: 17, startRow: 4, endRow: 8  },
-  { startCol: 5, endCol: 10, startRow: 10, endRow: 14 },
-  { startCol: 12, endCol: 17, startRow: 10, endRow: 14 },
-];
-
-// Spritesheet frame layout (4 cols × 4 rows)
-// Row 0=Down, Row 1=Up, Row 2=Left, Row 3=Right
-const FRAME_W = 256; // will be computed from image
-const FRAME_H = 256;
-
 export class FarmScene extends Phaser.Scene {
   constructor() {
     super('FarmScene');
@@ -79,7 +68,7 @@ export class FarmScene extends Phaser.Scene {
     this.load.image('obj_scarecrow',    '/assets/obj_scarecrow.jpg');
     this.load.image('obj_flowers',      '/assets/obj_flowers.jpg');
 
-    // Gemini-generated farmer spritesheet (4×4 grid, white bg between frames)
+    // Gemini-generated farmer spritesheet
     this.load.image('farmer_sheet_raw', '/assets/farmer_spritesheet.jpg');
   }
 
@@ -87,20 +76,19 @@ export class FarmScene extends Phaser.Scene {
     const totalW = MAP_COLS * TILE_SIZE;
     const totalH = MAP_ROWS * TILE_SIZE;
 
-    // ── 1. Build Spritesheet from Gemini image ─────────────
+    // ── 1. Spritesheet ─────────────────────────────────────
     this._buildFarmerSpritesheet();
 
     // ── 2. Tilemap ──────────────────────────────────────────
     this.tileRefs = {};
     this._buildTilemap();
 
-    // ── 3. Object Sprites (chroma-key) ─────────────────────
+    // ── 3. Objects (chroma-key) ─────────────────────────────
     this.staticObstacles = this.physics.add.staticGroup();
     this._buildObjects();
 
     // ── 4. Soil grid state ──────────────────────────────────
     this.soilTiles = {};
-    this._setupSoilGrid();
 
     // ── 5. Player ───────────────────────────────────────────
     const px = 11 * TILE_SIZE + TILE_SIZE / 2;
@@ -127,13 +115,23 @@ export class FarmScene extends Phaser.Scene {
 
     // ── 9. Tile highlight cursor ────────────────────────────
     this.tileCursor = this.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE, 0xffffff, 0.2)
-      .setStrokeStyle(2, 0xffd700, 0.9).setDepth(60).setVisible(false);
+      .setStrokeStyle(3, 0xffd700, 0.95).setDepth(60).setVisible(false);
 
     // ── 10. Input ───────────────────────────────────────────
     this.cursors  = this.input.keyboard.createCursorKeys();
     this.wasd     = this.input.keyboard.addKeys({ up:'W', down:'S', left:'A', right:'D' });
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.eKey     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+
+    // Pointer click/tap support on main game map
+    this.input.on('pointerdown', (pointer) => {
+      // Ignore clicks near bottom hotbar (UI height ~100px)
+      if (pointer.y > this.cameras.main.height - 95) return;
+      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+      const col = Math.floor(worldPoint.x / TILE_SIZE);
+      const row = Math.floor(worldPoint.y / TILE_SIZE);
+      this._doActionOnTile(col, row);
+    });
 
     // ── 11. Registry init ───────────────────────────────────
     this.registry.set('gold',       500);
@@ -147,11 +145,11 @@ export class FarmScene extends Phaser.Scene {
     // ── 12. Game clock ──────────────────────────────────────
     this.time.addEvent({ delay: 1000, callback: this._tickClock, callbackScope: this, loop: true });
 
-    // ── 13. Crop growth timers ──────────────────────────────
+    // ── 13. Crop growth sprites ─────────────────────────────
     this.cropSprites = {};
   }
 
-  // ─── Build farmer spritesheet from Gemini image ───────────
+  // ─── Build farmer spritesheet ──────────────────────────────
   _buildFarmerSpritesheet() {
     const src = this.textures.get('farmer_sheet_raw').getSourceImage();
     const fw = Math.floor(src.width  / 4);
@@ -163,7 +161,6 @@ export class FarmScene extends Phaser.Scene {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(src, 0, 0);
 
-    // Strip white background from each frame (threshold: >230 all channels)
     const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const d = id.data;
     for (let i = 0; i < d.length; i += 4) {
@@ -230,7 +227,6 @@ export class FarmScene extends Phaser.Scene {
       this.add.image(x, y, keyMasked)
         .setOrigin(0, 0).setDisplaySize(w, h).setDepth(obj.depth);
 
-      // Physics rectangle collider (bottom half of object)
       if (obj.tileW >= 2) {
         const body = this.add.rectangle(x + w/2, y + h*0.8, w*0.7, h*0.25, 0,0);
         this.physics.add.existing(body, true);
@@ -254,22 +250,11 @@ export class FarmScene extends Phaser.Scene {
     this.textures.addCanvas(dstKey, c);
   }
 
-  // ─── Soil grid ────────────────────────────────────────────
-  _setupSoilGrid() {
-    SOIL_GRID_AREAS.forEach(area => {
-      for (let r = area.startRow; r <= area.endRow; r++) {
-        for (let c = area.startCol; c <= area.endCol; c++) {
-          this.soilTiles[`${c},${r}`] = { tilled: false, watered: false, crop: null };
-        }
-      }
-    });
-  }
-
   // ─── UPDATE ───────────────────────────────────────────────
   update() {
     this._handleMovement();
     this._updateCursor();
-    this._handleAction();
+    this._handleKeyboardAction();
   }
 
   _handleMovement() {
@@ -286,7 +271,6 @@ export class FarmScene extends Phaser.Scene {
     if (up)    { this.player.body.setVelocityY(-speed); this.facing = 'up';    }
     if (down)  { this.player.body.setVelocityY(speed);  this.facing = 'down';  }
 
-    // Normalize diagonal
     if ((left||right) && (up||down)) {
       this.player.body.velocity.normalize().scale(speed);
     }
@@ -300,71 +284,89 @@ export class FarmScene extends Phaser.Scene {
     const dx = { down: 0, up: 0, left: -1, right: 1 };
     const dy = { down: 1, up: -1, left: 0, right: 0 };
 
-    // Player's current tile (center-bottom of sprite for accuracy)
     const pCol = Math.floor(this.player.x / TILE_SIZE);
     const pRow = Math.floor((this.player.y + 8) / TILE_SIZE);
 
-    // Prefer tile in front; fall back to tile player is standing on
     const frontCol = pCol + (dx[this.facing] || 0);
     const frontRow = pRow + (dy[this.facing] || 0);
 
-    const frontKey   = `${frontCol},${frontRow}`;
-    const currentKey = `${pCol},${pRow}`;
-
-    if (this.soilTiles[frontKey] !== undefined) {
+    // Target front tile if within map, else current tile
+    if (frontCol >= 0 && frontCol < MAP_COLS && frontRow >= 0 && frontRow < MAP_ROWS) {
       this.targetCol = frontCol;
       this.targetRow = frontRow;
-    } else if (this.soilTiles[currentKey] !== undefined) {
-      // Player is standing directly on a soil tile
+    } else {
       this.targetCol = pCol;
       this.targetRow = pRow;
-    } else {
-      // No valid soil nearby — hide cursor
-      this.targetCol = frontCol;
-      this.targetRow = frontRow;
-      this.tileCursor.setVisible(false);
-      return;
     }
 
-    this.tileCursor
-      .setVisible(true)
-      .setPosition(this.targetCol * TILE_SIZE + TILE_SIZE/2, this.targetRow * TILE_SIZE + TILE_SIZE/2);
+    const isPath = BASE_MAP[this.targetRow]?.[this.targetCol] === 3;
+    const isObstacle = this._isObstacleTile(this.targetCol, this.targetRow);
+
+    if (!isPath && !isObstacle) {
+      this.tileCursor
+        .setVisible(true)
+        .setPosition(this.targetCol * TILE_SIZE + TILE_SIZE/2, this.targetRow * TILE_SIZE + TILE_SIZE/2);
+    } else {
+      this.tileCursor.setVisible(false);
+    }
   }
 
-  _handleAction() {
+  _isObstacleTile(col, row) {
+    return OBJECTS.some(o => 
+      col >= o.col && col < o.col + o.tileW &&
+      row >= o.row && row < o.row + o.tileH
+    );
+  }
+
+  _handleKeyboardAction() {
     const spaceJust = Phaser.Input.Keyboard.JustDown(this.spaceKey);
     const eJust     = Phaser.Input.Keyboard.JustDown(this.eKey);
-    if (!spaceJust && !eJust) return;
+    if (spaceJust || eJust) {
+      this._doActionOnTile(this.targetCol, this.targetRow);
+    }
+  }
 
-    const key  = `${this.targetCol},${this.targetRow}`;
+  // ───────────────────────────────────────────────────────────
+  //  CORE FARMING ACTION DISPATCHER
+  // ───────────────────────────────────────────────────────────
+  _doActionOnTile(col, row) {
+    if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return;
+    if (BASE_MAP[row][col] === 3) return; // Dirt path cannot be farmed
+    if (this._isObstacleTile(col, row)) return; // Buildings/trees cannot be farmed
+
+    const key = `${col},${row}`;
+    if (!this.soilTiles[key]) {
+      this.soilTiles[key] = { tilled: false, watered: false, crop: null };
+    }
     const tile = this.soilTiles[key];
-    if (!tile) return;
-
     const tool = this.registry.get('currentTool') || 'hoe';
-    const stamina = this.registry.get('stamina') ?? 100;
 
     if (tool === 'hoe') {
       if (!tile.tilled) {
         tile.tilled = true;
-        this._swapTile(this.targetCol, this.targetRow, 'tile_soil_dry');
-        this._fx(this.targetCol, this.targetRow, '⛏️', '#d4a373');
+        this._swapTile(col, row, 'tile_soil_dry');
+        this._fx(col, row, '⛏️ 翻土！', '#d4a373');
         this._drainStamina(8);
         audioService.play('hoe');
       } else {
-        this._fx(this.targetCol, this.targetRow, '✋', '#ff6b6b');
+        this._fx(col, row, '土已翻過', '#ffcc80');
       }
 
     } else if (tool === 'watering') {
       if (tile.tilled && !tile.watered) {
         tile.watered = true;
-        this._swapTile(this.targetCol, this.targetRow, 'tile_soil_wet');
-        this._fx(this.targetCol, this.targetRow, '💧', '#90caf9');
+        this._swapTile(col, row, 'tile_soil_wet');
+        this._fx(col, row, '💧 澆水！', '#90caf9');
         this._drainStamina(5);
         audioService.play('water');
-        // Grow crops when watered
-        this._scheduleGrowth(this.targetCol, this.targetRow, key, tile);
+        // Trigger crop growth if seed was planted
+        if (tile.crop) {
+          this._scheduleGrowth(col, row, key, tile);
+        }
       } else if (!tile.tilled) {
-        this._fx(this.targetCol, this.targetRow, '❌', '#ff6b6b');
+        this._fx(col, row, '請先用⛏️翻土！', '#ff6b6b');
+      } else if (tile.watered) {
+        this._fx(col, row, '土已濕潤', '#90caf9');
       }
 
     } else if (tool === 'seed') {
@@ -372,37 +374,42 @@ export class FarmScene extends Phaser.Scene {
         const seedTypes = ['turnip','strawberry','tomato','corn'];
         const seedType  = seedTypes[Math.floor(Math.random() * seedTypes.length)];
         tile.crop = { type: seedType, stage: 0, maxStage: 3 };
-        this._drawCrop(this.targetCol, this.targetRow, 0);
-        this._fx(this.targetCol, this.targetRow, '🌱', '#a5d6a7');
+        this._drawCrop(col, row, 0);
+        this._fx(col, row, '🌱 播種！', '#a5d6a7');
         this._drainStamina(5);
         audioService.play('plant');
+
+        // If soil was already watered, start growing
+        if (tile.watered) {
+          this._scheduleGrowth(col, row, key, tile);
+        }
       } else if (!tile.tilled) {
-        this._fx(this.targetCol, this.targetRow, '鋤頭先！', '#ffcc80');
+        this._fx(col, row, '請先用⛏️翻土！', '#ff6b6b');
       } else if (tile.crop) {
-        this._fx(this.targetCol, this.targetRow, '已種了', '#ffcc80');
+        this._fx(col, row, '這裡已有作物', '#ffcc80');
       }
 
     } else if (tool === 'harvest') {
       if (tile.crop && tile.crop.stage >= tile.crop.maxStage) {
         const cropType = tile.crop.type;
         const prices = { turnip: 50, strawberry: 90, tomato: 140, corn: 210 };
-        const earned = prices[cropType] || 60;
+        const earned = prices[cropType] || 80;
 
         tile.crop    = null;
         tile.tilled  = false;
         tile.watered = false;
 
-        this._swapTile(this.targetCol, this.targetRow, 'tile_soil_dry');
-        this._removeCrop(this.targetCol, this.targetRow);
-        this._fx(this.targetCol, this.targetRow, `+${earned}G 🌾`, '#ffd700');
+        this._swapTile(col, row, 'tile_grass');
+        this._removeCrop(col, row);
+        this._fx(col, row, `+${earned}G 🌾 採收！`, '#ffd700');
         this._drainStamina(10);
 
         this.registry.set('gold', (this.registry.get('gold') ?? 500) + earned);
         audioService.play('harvest');
       } else if (tile.crop) {
-        this._fx(this.targetCol, this.targetRow, '還沒熟！', '#ffcc80');
+        this._fx(col, row, '⏳ 還沒成熟！', '#ffcc80');
       } else {
-        this._fx(this.targetCol, this.targetRow, '沒有作物', '#aaa');
+        this._fx(col, row, '這裡沒有成熟作物', '#aaa');
       }
     }
   }
@@ -410,16 +417,16 @@ export class FarmScene extends Phaser.Scene {
   // ─── Crop growth ──────────────────────────────────────────
   _scheduleGrowth(col, row, key, tile) {
     if (!tile.crop || tile.crop.stage >= tile.crop.maxStage) return;
-    this.time.delayedCall(4000, () => {
+    this.time.delayedCall(3500, () => {
       if (!tile.crop) return;
       tile.crop.stage++;
       tile.watered = false;
       this._swapTile(col, row, 'tile_soil_dry');
       this._drawCrop(col, row, tile.crop.stage);
       if (tile.crop.stage < tile.crop.maxStage) {
-        this._fx(col, row, '🌿', '#a5d6a7');
+        this._fx(col, row, '🌿 發芽長大！', '#a5d6a7');
       } else {
-        this._fx(col, row, '✅ 可收穫！', '#ffd700');
+        this._fx(col, row, '✅ 成熟可收穫！', '#ffd700');
       }
     });
   }
@@ -451,7 +458,7 @@ export class FarmScene extends Phaser.Scene {
     const x = col * TILE_SIZE + TILE_SIZE / 2;
     const y = row * TILE_SIZE - 4;
     const t = this.add.text(x, y, text, {
-      fontFamily: '"Fredoka", sans-serif',
+      fontFamily: '"Fredoka", "Noto Sans TC", sans-serif',
       fontSize: '18px',
       color,
       stroke: '#000',
@@ -483,16 +490,13 @@ export class FarmScene extends Phaser.Scene {
     this.registry.set('minute', minute);
     this.registry.set('day',    day);
 
-    // Day/night tint
     const t = (hour - 6 + minute/60) / 18;
     const alpha = t < 0.4 ? 0 : t > 0.9 ? (t - 0.9) * 4 * 0.5 : 0;
     this.dayOverlay?.setAlpha(Math.min(0.55, alpha));
   }
 
   _newDay() {
-    // Restore stamina
     this.registry.set('stamina', this.registry.get('maxStamina') ?? 100);
-    // Auto-grow all watered crops
     Object.entries(this.soilTiles).forEach(([k, tile]) => {
       if (tile.watered && tile.crop && tile.crop.stage < tile.crop.maxStage) {
         const [c, r] = k.split(',').map(Number);
@@ -503,14 +507,13 @@ export class FarmScene extends Phaser.Scene {
       }
     });
 
-    // Flash "New Day" message
     const cam = this.cameras.main;
     const txt = this.add.text(
       cam.scrollX + cam.width/2,
       cam.scrollY + cam.height/2,
       `🌅 Day ${this.registry.get('day')}`,
       {
-        fontFamily: '"Fredoka", sans-serif',
+        fontFamily: '"Fredoka", "Noto Sans TC", sans-serif',
         fontSize: '52px',
         color: '#ffd700',
         stroke: '#3e1f00',
