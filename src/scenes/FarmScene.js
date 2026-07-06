@@ -322,7 +322,11 @@ export class FarmScene extends Phaser.Scene {
     const spaceJust = Phaser.Input.Keyboard.JustDown(this.spaceKey);
     const eJust     = Phaser.Input.Keyboard.JustDown(this.eKey);
     if (spaceJust || eJust) {
-      this._doActionOnTile(this.targetCol, this.targetRow);
+      try {
+        this._doActionOnTile(this.targetCol, this.targetRow);
+      } catch (err) {
+        console.error('Key action error:', err);
+      }
     }
   }
 
@@ -330,87 +334,89 @@ export class FarmScene extends Phaser.Scene {
   //  CORE FARMING ACTION DISPATCHER
   // ───────────────────────────────────────────────────────────
   _doActionOnTile(col, row) {
-    if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return;
-    if (BASE_MAP[row][col] === 3) return; // Dirt path cannot be farmed
-    if (this._isObstacleTile(col, row)) return; // Buildings/trees cannot be farmed
+    try {
+      if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return;
+      if (BASE_MAP[row]?.[col] === 3) return; // Dirt path cannot be farmed
+      if (this._isObstacleTile(col, row)) return; // Buildings/trees cannot be farmed
 
-    const key = `${col},${row}`;
-    if (!this.soilTiles[key]) {
-      this.soilTiles[key] = { tilled: false, watered: false, crop: null };
-    }
-    const tile = this.soilTiles[key];
-    const tool = this.registry.get('currentTool') || 'hoe';
-
-    if (tool === 'hoe') {
-      if (!tile.tilled) {
-        tile.tilled = true;
-        this._swapTile(col, row, 'tile_soil_dry');
-        this._fx(col, row, '⛏️ 翻土！', '#d4a373');
-        this._drainStamina(8);
-        audioService.play('hoe');
-      } else {
-        this._fx(col, row, '土已翻過', '#ffcc80');
+      const key = `${col},${row}`;
+      if (!this.soilTiles[key]) {
+        this.soilTiles[key] = { tilled: false, watered: false, crop: null };
       }
+      const tile = this.soilTiles[key];
+      const tool = this.registry.get('currentTool') || 'hoe';
 
-    } else if (tool === 'watering') {
-      if (tile.tilled && !tile.watered) {
-        tile.watered = true;
-        this._swapTile(col, row, 'tile_soil_wet');
-        this._fx(col, row, '💧 澆水！', '#90caf9');
-        this._drainStamina(5);
-        audioService.play('water');
-        // Trigger crop growth if seed was planted
-        if (tile.crop) {
-          this._scheduleGrowth(col, row, key, tile);
+      if (tool === 'hoe') {
+        if (!tile.tilled) {
+          tile.tilled = true;
+          this._swapTile(col, row, 'tile_soil_dry');
+          this._fx(col, row, '⛏️ 翻土！', '#d4a373');
+          this._drainStamina(8);
+          audioService.play('hoe');
+        } else {
+          this._fx(col, row, '土已翻過', '#ffcc80');
         }
-      } else if (!tile.tilled) {
-        this._fx(col, row, '請先用⛏️翻土！', '#ff6b6b');
-      } else if (tile.watered) {
-        this._fx(col, row, '土已濕潤', '#90caf9');
-      }
 
-    } else if (tool === 'seed') {
-      if (tile.tilled && !tile.crop) {
-        const seedTypes = ['turnip','strawberry','tomato','corn'];
-        const seedType  = seedTypes[Math.floor(Math.random() * seedTypes.length)];
-        tile.crop = { type: seedType, stage: 0, maxStage: 3 };
-        this._drawCrop(col, row, 0);
-        this._fx(col, row, '🌱 播種！', '#a5d6a7');
-        this._drainStamina(5);
-        audioService.play('plant');
-
-        // If soil was already watered, start growing
-        if (tile.watered) {
-          this._scheduleGrowth(col, row, key, tile);
+      } else if (tool === 'watering') {
+        if (tile.tilled && !tile.watered) {
+          tile.watered = true;
+          this._swapTile(col, row, 'tile_soil_wet');
+          this._fx(col, row, '💧 澆水！', '#90caf9');
+          this._drainStamina(5);
+          audioService.play('water');
+          if (tile.crop) {
+            this._scheduleGrowth(col, row, key, tile);
+          }
+        } else if (!tile.tilled) {
+          this._fx(col, row, '請先用⛏️翻土！', '#ff6b6b');
+        } else if (tile.watered) {
+          this._fx(col, row, '土已濕潤', '#90caf9');
         }
-      } else if (!tile.tilled) {
-        this._fx(col, row, '請先用⛏️翻土！', '#ff6b6b');
-      } else if (tile.crop) {
-        this._fx(col, row, '這裡已有作物', '#ffcc80');
+
+      } else if (tool === 'seed') {
+        if (tile.tilled && !tile.crop) {
+          const seedTypes = ['turnip','strawberry','tomato','corn'];
+          const seedType  = seedTypes[Math.floor(Math.random() * seedTypes.length)];
+          tile.crop = { type: seedType, stage: 0, maxStage: 3 };
+          this._drawCrop(col, row, 0);
+          this._fx(col, row, '🌱 播種！', '#a5d6a7');
+          this._drainStamina(5);
+          audioService.play('plant');
+
+          if (tile.watered) {
+            this._scheduleGrowth(col, row, key, tile);
+          }
+        } else if (!tile.tilled) {
+          this._fx(col, row, '請先用⛏️翻土！', '#ff6b6b');
+        } else if (tile.crop) {
+          this._fx(col, row, '這裡已有作物', '#ffcc80');
+        }
+
+      } else if (tool === 'harvest') {
+        if (tile.crop && tile.crop.stage >= tile.crop.maxStage) {
+          const cropType = tile.crop.type;
+          const prices = { turnip: 50, strawberry: 90, tomato: 140, corn: 210 };
+          const earned = prices[cropType] || 80;
+
+          tile.crop    = null;
+          tile.tilled  = false;
+          tile.watered = false;
+
+          this._swapTile(col, row, 'tile_grass');
+          this._removeCrop(col, row);
+          this._fx(col, row, `+${earned}G 🌾 採收！`, '#ffd700');
+          this._drainStamina(10);
+
+          this.registry.set('gold', (this.registry.get('gold') ?? 500) + earned);
+          audioService.play('harvest');
+        } else if (tile.crop) {
+          this._fx(col, row, '⏳ 還沒成熟！', '#ffcc80');
+        } else {
+          this._fx(col, row, '這裡沒有成熟作物', '#aaa');
+        }
       }
-
-    } else if (tool === 'harvest') {
-      if (tile.crop && tile.crop.stage >= tile.crop.maxStage) {
-        const cropType = tile.crop.type;
-        const prices = { turnip: 50, strawberry: 90, tomato: 140, corn: 210 };
-        const earned = prices[cropType] || 80;
-
-        tile.crop    = null;
-        tile.tilled  = false;
-        tile.watered = false;
-
-        this._swapTile(col, row, 'tile_grass');
-        this._removeCrop(col, row);
-        this._fx(col, row, `+${earned}G 🌾 採收！`, '#ffd700');
-        this._drainStamina(10);
-
-        this.registry.set('gold', (this.registry.get('gold') ?? 500) + earned);
-        audioService.play('harvest');
-      } else if (tile.crop) {
-        this._fx(col, row, '⏳ 還沒成熟！', '#ffcc80');
-      } else {
-        this._fx(col, row, '這裡沒有成熟作物', '#aaa');
-      }
+    } catch (err) {
+      console.error('Tile action error:', err);
     }
   }
 

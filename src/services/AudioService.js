@@ -17,6 +17,20 @@ class AudioService {
     }
   }
 
+  // Universal play dispatcher
+  play(soundName) {
+    try {
+      if (soundName === 'hoe') this.playHoe();
+      else if (soundName === 'water') this.playWater();
+      else if (soundName === 'plant') this.playPlant();
+      else if (soundName === 'harvest') this.playHarvest();
+      else if (soundName === 'coin') this.playCoin();
+      else if (soundName === 'chime') this.playDayChime();
+    } catch (e) {
+      console.warn('Audio error:', e);
+    }
+  }
+
   // Hoeing soil sound
   playHoe() {
     this.init();
